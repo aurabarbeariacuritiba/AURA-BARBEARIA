@@ -100,14 +100,20 @@ export default function Agenda() {
   /** Lacunas livres (verde) de um profissional: dentro do horário de atendimento, sem agendamento, bloqueio ou intervalo. */
   function gapsFor(proId: string) {
     const h = hours.find((x) => x.weekday === day.getDay());
-    if (!h?.is_open) return [];
-    const winStart = Math.max(at(day, h.open_time).getTime(), Date.now());
-    const winEnd = at(day, h.close_time).getTime();
+    const open = h?.is_open ? h : null;
+    const appts = visible.filter((a) => a.professional_id === proId && !["cancelled", "no_show"].includes(a.status));
+    if (!open && appts.length < 2) return [];
+    // janela = horário de atendimento, ampliada para incluir atendimentos marcados por fora (ex.: 08h ou 20h).
+    // Em dia fechado, só o espaço entre o primeiro e o último atendimento.
+    const firstStart = Math.min(open ? at(day, open.open_time).getTime() : Infinity, ...appts.map((a) => new Date(a.starts_at).getTime()));
+    const lastEnd = Math.max(open ? at(day, open.close_time).getTime() : -Infinity, ...appts.map((a) => new Date(a.ends_at).getTime()));
+    const winStart = Math.max(firstStart, Date.now());
+    const winEnd = lastEnd;
     const busy: [number, number][] = [
-      ...visible.filter((a) => a.professional_id === proId && !["cancelled", "no_show"].includes(a.status)).map((a) => [new Date(a.starts_at).getTime(), new Date(a.ends_at).getTime()] as [number, number]),
+      ...appts.map((a) => [new Date(a.starts_at).getTime(), new Date(a.ends_at).getTime()] as [number, number]),
       ...offs.filter((o) => !o.professional_id || o.professional_id === proId).map((o) => [new Date(o.starts_at).getTime(), new Date(o.ends_at).getTime()] as [number, number]),
     ];
-    if (h.break_start && h.break_end) busy.push([at(day, h.break_start).getTime(), at(day, h.break_end).getTime()]);
+    if (open?.break_start && open.break_end) busy.push([at(day, open.break_start).getTime(), at(day, open.break_end).getTime()]);
     busy.sort((a, b) => a[0] - b[0]);
     const end = winEnd;
     const gaps: { start: number; end: number }[] = [];

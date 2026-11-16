@@ -35,7 +35,7 @@ export default function Home() {
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-b from-transparent to-bg" />
         </div>
         {isStaff && (
-          <Link to="/admin" className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold backdrop-blur">
+          <Link to="/admin" className="absolute top-[calc(env(safe-area-inset-top)+1rem)] right-4 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold backdrop-blur">
             <Settings2 className="size-3.5" /> Gestão
           </Link>
         )}

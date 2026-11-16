@@ -22,6 +22,12 @@ html,
 body,
 #root {
   min-height: 100%;
+  /* nunca deixa a página "escorregar" para os lados no celular */
+  overflow-x: clip;
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
 }
 
 body {

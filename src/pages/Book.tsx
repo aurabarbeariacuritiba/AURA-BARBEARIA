@@ -127,7 +127,8 @@ export default function Book() {
   const stepIdx = multiPro ? step - 1 : step === 1 ? 0 : step - 2;
 
   return (
-    <div className="px-4 pt-5">
+    <div className="pt-safe px-4">
+      <div className="h-5" />
       {step < 5 && (
         <>
           <div className="mb-4 flex items-center gap-3">

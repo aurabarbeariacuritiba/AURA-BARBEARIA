@@ -84,14 +84,14 @@ export function AdminLayout() {
       </aside>
 
       {/* topo (celular) */}
-      <div className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-lg md:hidden">
-        <div className="flex items-center justify-between px-4 pt-3">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="size-4 text-gold" />
-            <span className="font-display text-lg font-semibold tracking-wide">AURA · Gestão</span>
+      <div className="pt-safe sticky top-0 z-30 border-b border-line bg-bg/95 backdrop-blur-lg md:hidden">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <BarChart3 className="size-4 shrink-0 text-gold" />
+            <span className="truncate font-display text-lg font-semibold tracking-wide">AURA · Gestão</span>
           </div>
-          <NavLink to="/" className="text-xs text-muted">
-            App do cliente
+          <NavLink to="/" className="flex shrink-0 items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-semibold text-gold">
+            <ArrowLeft className="size-3.5" /> App do cliente
           </NavLink>
         </div>
         <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 py-2">
@@ -116,7 +116,8 @@ export function AdminLayout() {
 /** Cabeçalho simples para páginas internas do cliente */
 export function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <header className="px-4 pt-6 pb-4">
+    <header className="pt-safe px-4 pb-4">
+      <div className="h-6" />
       <h1 className="text-2xl font-bold">{title}</h1>
       {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
     </header>

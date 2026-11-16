@@ -8,7 +8,7 @@ import { Button, Input, useToast } from "../components/ui";
 
 function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col px-5 py-6">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] pb-6">
       <Link to="/" className="mb-6 inline-flex w-fit items-center gap-1 text-sm text-muted hover:text-ink">
         <ArrowLeft className="size-4" /> Voltar
       </Link>

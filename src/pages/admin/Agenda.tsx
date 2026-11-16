@@ -12,6 +12,8 @@ import { Button, Card, cx, Empty, Modal, PageLoader, useToast } from "../../comp
 import { APPT_SELECT, ApptModal, BlockModal, clientName, NewApptModal } from "./shared";
 
 const PX_PER_MIN = 1.3;
+const ADMIN_START = "07:00";
+const ADMIN_END = "20:00";
 
 const blockColor = (a: Appointment) => {
   if (a.status === "cancelled") return "border-line bg-surface-2/60 text-muted line-through";
@@ -27,10 +29,11 @@ export default function Agenda() {
   const [day, setDay] = useState(() => startOfDay(new Date()));
   const [appts, setAppts] = useState<Appointment[] | null>(null);
   const [offs, setOffs] = useState<TimeOff[]>([]);
-  const [view, setView] = useState<"grid" | "list">(() => (window.innerWidth < 640 ? "list" : "grid"));
+  const [view, setView] = useState<"grid" | "list">("grid");
   const [showCancelled, setShowCancelled] = useState(false);
   const [open, setOpen] = useState<Appointment | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [preset, setPreset] = useState<{ time?: string; proId?: string }>({});
   const [blockOpen, setBlockOpen] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [marks, setMarks] = useState<Record<string, number>>({});
@@ -71,11 +74,14 @@ export default function Agenda() {
 
   const visible = useMemo(() => (appts ?? []).filter((a) => showCancelled || a.status !== "cancelled"), [appts, showCancelled]);
 
-  // janela da grade: expediente do dia (ou 08–20), ampliada para caber todos os agendamentos
+  // janela da grade: sempre 07h–20h para a equipe (agendamentos por fora do expediente),
+  // ampliada se houver algum agendamento além disso
   const { gridStart, gridEnd } = useMemo(() => {
     const h = hours.find((x) => x.weekday === day.getDay());
-    let s = at(day, h?.is_open ? h.open_time : "08:00");
-    let e = at(day, h?.is_open ? h.close_time : "20:00");
+    let s = at(day, ADMIN_START);
+    let e = at(day, ADMIN_END);
+    if (h?.is_open && at(day, h.open_time) < s) s = at(day, h.open_time);
+    if (h?.is_open && at(day, h.close_time) > e) e = at(day, h.close_time);
     for (const a of visible) {
       if (new Date(a.starts_at) < s) s = new Date(a.starts_at);
       if (new Date(a.ends_at) > e) e = new Date(a.ends_at);
@@ -137,7 +143,7 @@ export default function Agenda() {
           <Button size="sm" variant="secondary" onClick={() => setBlockOpen(true)}>
             <Ban className="size-4" /> Bloquear
           </Button>
-          <Button size="sm" onClick={() => setNewOpen(true)}>
+          <Button size="sm" onClick={() => (setPreset({}), setNewOpen(true))}>
             <CalendarPlus className="size-4" /> Agendar
           </Button>
         </div>
@@ -224,9 +230,33 @@ export default function Agenda() {
                 <div className="flex h-11 items-center justify-center border-b border-line px-2 text-sm font-semibold">
                   <span className="truncate">{p.name}</span>
                 </div>
-                <div className="relative" style={{ height: totalMin * PX_PER_MIN }}>
+                <div
+                  className="relative cursor-cell"
+                  style={{ height: totalMin * PX_PER_MIN }}
+                  title="Toque num horário vazio para agendar"
+                  onClick={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+                    const mins = Math.floor(y / PX_PER_MIN / 15) * 15;
+                    setPreset({ time: fmt(new Date(gridStart.getTime() + mins * 60_000), "HH:mm"), proId: p.id });
+                    setNewOpen(true);
+                  }}
+                >
+                  {/* fora do expediente: área sombreada (continua agendável pela equipe) */}
+                  {(() => {
+                    const h = hours.find((x) => x.weekday === day.getDay());
+                    if (!h?.is_open) return <div className="pointer-events-none absolute inset-0 bg-surface-2/50" />;
+                    const o = at(day, h.open_time), c = at(day, h.close_time);
+                    return (
+                      <>
+                        {o > gridStart && <div className="pointer-events-none absolute inset-x-0 top-0 bg-surface-2/50" style={{ height: top(o) }} />}
+                        {c < gridEnd && <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-surface-2/50" style={{ top: top(c) }} />}
+                        {h.break_start && h.break_end && <div className="pointer-events-none absolute inset-x-0 bg-surface-2/50" style={{ top: top(at(day, h.break_start)), height: top(at(day, h.break_end)) - top(at(day, h.break_start)) }} />}
+                      </>
+                    );
+                  })()}
                   {hourMarks.map((h) => (
-                    <div key={h.getTime()} className="absolute inset-x-0 border-t border-line/60" style={{ top: top(h) }} />
+                    <div key={h.getTime()} className="pointer-events-none absolute inset-x-0 border-t border-line/60" style={{ top: top(h) }} />
                   ))}
                   {offs
                     .filter((o) => !o.professional_id || o.professional_id === p.id)
@@ -275,7 +305,7 @@ export default function Agenda() {
       </Modal>
 
       <ApptModal appt={open} onClose={() => setOpen(null)} onChanged={load} />
-      <NewApptModal open={newOpen} onClose={() => setNewOpen(false)} onSaved={load} services={services} professionals={professionals} defaultDay={day} />
+      <NewApptModal open={newOpen} onClose={() => setNewOpen(false)} onSaved={load} services={services} professionals={professionals} defaultDay={day} defaultTime={preset.time} defaultProId={preset.proId} />
       <BlockModal open={blockOpen} onClose={() => setBlockOpen(false)} onSaved={load} professionals={professionals} defaultDay={day} />
     </div>
   );

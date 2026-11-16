@@ -197,7 +197,7 @@ function Line({ l, v }: { l: string; v: string }) {
 /* =========================================================
    Novo agendamento feito pela equipe (balcão / telefone)
    ========================================================= */
-export function NewApptModal({ open, onClose, onSaved, services, professionals, defaultDay }: { open: boolean; onClose: () => void; onSaved: () => void; services: Service[]; professionals: Professional[]; defaultDay: Date }) {
+export function NewApptModal({ open, onClose, onSaved, services, professionals, defaultDay, defaultTime, defaultProId }: { open: boolean; onClose: () => void; onSaved: () => void; services: Service[]; professionals: Professional[]; defaultDay: Date; defaultTime?: string; defaultProId?: string }) {
   const toast = useToast();
   const [mode, setMode] = useState<"registered" | "guest">("registered");
   const [q, setQ] = useState("");
@@ -215,12 +215,13 @@ export function NewApptModal({ open, onClose, onSaved, services, professionals, 
     if (!open) return;
     setDate(isoDay(defaultDay));
     setServiceId(services[0]?.id ?? "");
-    setProId(professionals[0]?.id ?? "");
+    setProId(defaultProId ?? professionals[0]?.id ?? "");
+    setTime(defaultTime ?? "09:00");
     setClientId("");
     setQ("");
     setGuest({ name: "", phone: "" });
     setNotes("");
-  }, [open, defaultDay, services, professionals]);
+  }, [open, defaultDay, services, professionals, defaultTime, defaultProId]);
 
   useEffect(() => {
     if (!open || mode !== "registered") return;

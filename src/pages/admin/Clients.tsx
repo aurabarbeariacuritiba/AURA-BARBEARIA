@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, Search } from "lucide-react";
+import { MessageCircle, Pencil, Search } from "lucide-react";
 import { supabase, errMsg } from "../../lib/supabase";
-import { fmt, initials, money, whatsappLink } from "../../lib/format";
+import { fmt, initials, maskPhone, money, whatsappLink } from "../../lib/format";
 import { useAuth } from "../../contexts/AuthContext";
 import type { Appointment, Profile, Role } from "../../lib/types";
 import { PayBadge, StatusBadge } from "../../components/StatusBadges";
-import { Badge, Card, Empty, Modal, PageLoader, Select, useToast } from "../../components/ui";
+import { Badge, Button, Card, Empty, Input, Modal, PageLoader, Select, useToast } from "../../components/ui";
 
 const ROLE_LABEL: Record<Role, string> = { client: "Cliente", barber: "Barbeiro", admin: "Administrador" };
 
@@ -16,6 +16,32 @@ export default function Clients() {
   const [list, setList] = useState<Profile[] | null>(null);
   const [sel, setSel] = useState<Profile | null>(null);
   const [history, setHistory] = useState<Appointment[] | null>(null);
+  const [edit, setEdit] = useState<{ name: string; phone: string; email: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function openClient(p: Profile) {
+    setEdit(null);
+    setSel(p);
+  }
+
+  async function saveEdit() {
+    if (!sel || !edit) return;
+    if (!edit.name.trim()) return toast.error("Informe o nome.");
+    const digits = edit.phone.replace(/\D/g, "");
+    if (digits && digits.length < 10) return toast.error("Telefone inválido.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(edit.email.trim())) return toast.error("E-mail inválido.");
+    const emailChanged = edit.email.trim().toLowerCase() !== (sel.email ?? "").toLowerCase();
+    if (emailChanged && !confirm(`O e-mail de login do cliente passará a ser ${edit.email.trim().toLowerCase()}. Continuar?`)) return;
+    setSaving(true);
+    const { data, error } = await supabase.rpc("admin_update_profile", { p_id: sel.id, p_full_name: edit.name, p_phone: edit.phone, p_email: edit.email });
+    setSaving(false);
+    if (error) return toast.error(errMsg(error));
+    const upd = { ...sel, ...(data as Profile) };
+    setSel(upd);
+    setList((l) => l?.map((x) => (x.id === upd.id ? upd : x)) ?? null);
+    setEdit(null);
+    toast.success("Dados do cliente atualizados.");
+  }
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -66,7 +92,7 @@ export default function Clients() {
       ) : (
         <Card className="divide-y divide-line p-0">
           {list.map((p) => (
-            <button key={p.id} onClick={() => setSel(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
+            <button key={p.id} onClick={() => openClient(p)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2">
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gold/15 text-sm font-semibold text-gold">{initials(p.full_name || p.email || "")}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{p.full_name || "(sem nome)"}</span>
@@ -80,7 +106,7 @@ export default function Clients() {
         </Card>
       )}
 
-      <Modal open={!!sel} onClose={() => setSel(null)} title="Cliente" wide>
+      <Modal open={!!sel} onClose={() => { setSel(null); setEdit(null); }} title="Cliente" wide>
         {sel && (
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-4">
@@ -92,12 +118,45 @@ export default function Clients() {
                 </p>
                 <p className="text-xs text-muted">Cliente desde {fmt(sel.created_at, "dd/MM/yyyy")}</p>
               </div>
-              {whatsappLink(sel.phone) && (
-                <a href={whatsappLink(sel.phone)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-ok/15 px-3 py-1.5 text-sm font-semibold text-ok">
-                  <MessageCircle className="size-4" /> WhatsApp
-                </a>
-              )}
+              <div className="flex gap-2">
+                {whatsappLink(sel.phone) && (
+                  <a href={whatsappLink(sel.phone)!} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-ok/15 px-3 py-1.5 text-sm font-semibold text-ok">
+                    <MessageCircle className="size-4" /> WhatsApp
+                  </a>
+                )}
+                {isAdmin && !edit && (
+                  <button
+                    onClick={() => setEdit({ name: sel.full_name ?? "", phone: maskPhone(sel.phone ?? ""), email: sel.email ?? "" })}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1.5 text-sm font-semibold text-gold"
+                  >
+                    <Pencil className="size-4" /> Editar
+                  </button>
+                )}
+              </div>
             </div>
+
+            {edit && (
+              <div className="space-y-3 rounded-2xl border border-gold/30 bg-surface-2 p-4">
+                <p className="text-sm font-semibold">Editar dados do cliente</p>
+                <Input label="Nome completo" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                <Input label="Telefone / WhatsApp" type="tel" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: maskPhone(e.target.value) })} />
+                <Input
+                  label="E-mail"
+                  type="email"
+                  value={edit.email}
+                  onChange={(e) => setEdit({ ...edit, email: e.target.value })}
+                  hint="É também o e-mail de login. Se mudar, o cliente passa a entrar com o novo e-mail (a senha continua a mesma)."
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setEdit(null)} disabled={saving}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveEdit} loading={saving}>
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-surface-2 p-3">

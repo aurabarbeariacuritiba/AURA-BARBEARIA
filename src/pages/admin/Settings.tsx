@@ -23,7 +23,7 @@ export default function SettingsPage() {
 
   async function save() {
     for (const h of hours) {
-      if (h.is_open && h.close_time <= h.open_time) return toast.error(`${WEEKDAYS[h.weekday]}: fechamento deve ser depois da abertura.`);
+      if (h.is_open && h.close_time <= h.open_time) return toast.error(`${WEEKDAYS[h.weekday]}: o último horário deve ser depois do primeiro.`);
       if (!!h.break_start !== !!h.break_end) return toast.error(`${WEEKDAYS[h.weekday]}: preencha início e fim do intervalo.`);
     }
     setSaving(true);
@@ -95,7 +95,8 @@ export default function SettingsPage() {
       </div>
 
       <Card>
-        <SectionTitle>Horário de funcionamento</SectionTitle>
+        <SectionTitle>Horário de atendimento</SectionTitle>
+        <p className="-mt-2 mb-3 text-xs text-muted">Primeiro e último horário em que o cliente pode <b>iniciar</b> um atendimento pelo app. A equipe pode agendar fora desses horários pela Agenda.</p>
         <div className="space-y-3">
           {[1, 2, 3, 4, 5, 6, 0].map((wd) => {
             const h = hours.find((x) => x.weekday === wd);
@@ -108,8 +109,8 @@ export default function SettingsPage() {
                 </button>
                 {h.is_open && (
                   <div className="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:grid-cols-4">
-                    <TimeIn label="Abre" v={h.open_time} on={(v) => setH(wd, { open_time: v })} />
-                    <TimeIn label="Fecha" v={h.close_time} on={(v) => setH(wd, { close_time: v })} />
+                    <TimeIn label="1º horário" v={h.open_time} on={(v) => setH(wd, { open_time: v })} />
+                    <TimeIn label="Último horário" v={h.close_time} on={(v) => setH(wd, { close_time: v })} />
                     <TimeIn label="Intervalo de" v={h.break_start ?? ""} on={(v) => setH(wd, { break_start: v || null })} />
                     <TimeIn label="até" v={h.break_end ?? ""} on={(v) => setH(wd, { break_end: v || null })} />
                   </div>

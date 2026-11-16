@@ -6,7 +6,8 @@ export function at(day: Date, hhmm: string) {
   return set(day, { hours: h, minutes: m, seconds: 0, milliseconds: 0 });
 }
 
-/** Gera horários livres para um dia, considerando expediente, intervalo e ocupações. */
+/** Gera horários livres para um dia.
+ *  open_time = primeiro início possível; close_time = último início possível (o atendimento pode terminar depois). */
 export function buildSlots(opts: {
   day: Date;
   hours: BusinessHour | undefined;
@@ -19,7 +20,7 @@ export function buildSlots(opts: {
   const now = (opts.now ?? new Date()).getTime();
   if (!hours || !hours.is_open) return [];
 
-  const close = at(day, hours.close_time).getTime();
+  const lastStart = at(day, hours.close_time).getTime();
   const bStart = hours.break_start ? at(day, hours.break_start).getTime() : null;
   const bEnd = hours.break_end ? at(day, hours.break_end).getTime() : null;
   const ranges = busy.map((b) => [new Date(b.starts_at).getTime(), new Date(b.ends_at).getTime()]);
@@ -28,7 +29,7 @@ export function buildSlots(opts: {
   for (let t = at(day, hours.open_time); ; t = addMinutes(t, intervalMin)) {
     const s = t.getTime();
     const e = addMinutes(t, durationMin).getTime();
-    if (e > close) break;
+    if (s > lastStart) break;
     if (s <= now) continue;
     if (bStart !== null && bEnd !== null && s < bEnd && e > bStart) continue;
     if (ranges.some(([bs, be]) => s < be && e > bs)) continue;

@@ -18,7 +18,7 @@ const ADMIN_END = "20:00";
 const blockColor = (a: Appointment) => {
   if (a.status === "cancelled") return "border-line bg-surface-2/60 text-muted line-through";
   if (a.status === "no_show") return "border-line bg-surface-2 text-muted";
-  if (a.payment_status === "paid") return "border-ok/50 bg-ok/12";
+  if (a.payment_status === "paid") return "border-info/50 bg-info/12";
   if (a.status === "completed") return "border-warn/50 bg-warn/12";
   return "border-gold/50 bg-gold/12";
 };
@@ -97,6 +97,31 @@ export default function Agenda() {
   const dayTotal = visible.filter((a) => a.status !== "cancelled").reduce((s, a) => s + Number(a.price), 0);
   const closed = !hours.find((x) => x.weekday === day.getDay())?.is_open;
 
+  /** Lacunas livres (verde) de um profissional: dentro do horário de atendimento, sem agendamento, bloqueio ou intervalo. */
+  function gapsFor(proId: string) {
+    const h = hours.find((x) => x.weekday === day.getDay());
+    if (!h?.is_open) return [];
+    const winStart = Math.max(at(day, h.open_time).getTime(), Date.now());
+    const winEnd = at(day, h.close_time).getTime();
+    const busy: [number, number][] = [
+      ...visible.filter((a) => a.professional_id === proId && !["cancelled", "no_show"].includes(a.status)).map((a) => [new Date(a.starts_at).getTime(), new Date(a.ends_at).getTime()] as [number, number]),
+      ...offs.filter((o) => !o.professional_id || o.professional_id === proId).map((o) => [new Date(o.starts_at).getTime(), new Date(o.ends_at).getTime()] as [number, number]),
+    ];
+    if (h.break_start && h.break_end) busy.push([at(day, h.break_start).getTime(), at(day, h.break_end).getTime()]);
+    busy.sort((a, b) => a[0] - b[0]);
+    const end = winEnd;
+    const gaps: { start: number; end: number }[] = [];
+    let cursor = winStart;
+    for (const [bs, be] of busy) {
+      if (be <= cursor) continue;
+      if (bs > cursor) gaps.push({ start: cursor, end: Math.min(bs, end) });
+      cursor = Math.max(cursor, be);
+      if (cursor >= end) break;
+    }
+    if (cursor < end) gaps.push({ start: cursor, end });
+    return gaps.filter((g) => g.end - g.start >= 5 * 60_000);
+  }
+
   async function removeOff(id: string) {
     if (!confirm("Remover este bloqueio?")) return;
     const { error } = await supabase.from("time_off").delete().eq("id", id);
@@ -155,13 +180,16 @@ export default function Agenda() {
         </span>
         {closed && <span className="text-warn">Barbearia fechada neste dia</span>}
         <span className="flex items-center gap-1.5">
+          <i className="size-2.5 rounded-sm border border-dashed border-ok bg-ok/20" /> Livre p/ encaixe
+        </span>
+        <span className="flex items-center gap-1.5">
           <i className="size-2.5 rounded-sm bg-gold/60" /> A pagar
         </span>
         <span className="flex items-center gap-1.5">
           <i className="size-2.5 rounded-sm bg-warn/60" /> Concluído sem baixa
         </span>
         <span className="flex items-center gap-1.5">
-          <i className="size-2.5 rounded-sm bg-ok/60" /> Pago
+          <i className="size-2.5 rounded-sm bg-info/60" /> Pago
         </span>
         <label className="ml-auto flex items-center gap-1.5">
           <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} className="accent-[var(--color-gold)]" /> Mostrar cancelados
@@ -258,6 +286,28 @@ export default function Agenda() {
                   {hourMarks.map((h) => (
                     <div key={h.getTime()} className="pointer-events-none absolute inset-x-0 border-t border-line/60" style={{ top: top(h) }} />
                   ))}
+                  {gapsFor(p.id).map((g) => {
+                    const mins = Math.round((g.end - g.start) / 60_000);
+                    const hgt = mins * PX_PER_MIN - 2;
+                    return (
+                      <button
+                        key={g.start}
+                        onClick={() => {
+                          setPreset({ time: fmt(new Date(g.start), "HH:mm"), proId: p.id });
+                          setNewOpen(true);
+                        }}
+                        className="absolute inset-x-1 overflow-hidden rounded-lg border border-dashed border-ok/50 bg-ok/10 px-2 text-left text-[11px] font-semibold text-ok transition hover:bg-ok/20"
+                        style={{ top: top(new Date(g.start)) + 1, height: hgt }}
+                        title={`Livre ${fmt(new Date(g.start), "HH:mm")}–${fmt(new Date(g.end), "HH:mm")} · toque para encaixar`}
+                      >
+                        {hgt >= 14 && (
+                          <span className="block truncate leading-[1.4]">
+                            {mins >= 60 ? `${Math.floor(mins / 60)}h${mins % 60 ? String(mins % 60).padStart(2, "0") : ""}` : `${mins} min`} livre{hgt >= 30 ? ` · ${fmt(new Date(g.start), "HH:mm")}` : ""}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                   {offs
                     .filter((o) => !o.professional_id || o.professional_id === p.id)
                     .map((o) => (

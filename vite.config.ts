@@ -10,14 +10,14 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "apple-touch-icon.png"],
+      includeAssets: ["favicon.png", "apple-touch-icon.png", "logo-aura.jpg"],
       manifest: {
         name: "Aura Barbearia",
         short_name: "Aura",
         description: "Agende seu horário na Aura Barbearia",
         lang: "pt-BR",
         theme_color: "#0d0d0e",
-        background_color: "#0d0d0e",
+        background_color: "#1b1918",
         display: "standalone",
         orientation: "portrait",
         start_url: "./",

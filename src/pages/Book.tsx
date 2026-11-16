@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { addDays, endOfDay, isBefore, startOfDay } from "date-fns";
+import { addDays, eachDayOfInterval, endOfDay, isBefore, startOfDay } from "date-fns";
 import { ArrowLeft, CalendarCheck2, Check, Clock, Store, Smartphone, Users } from "lucide-react";
 import { supabase, errMsg } from "../lib/supabase";
 import { useShop } from "../lib/useShop";
 import { buildSlots } from "../lib/slots";
 import { duration, fmt, initials, money } from "../lib/format";
 import type { Appointment } from "../lib/types";
-import { Calendar } from "../components/Calendar";
+import { DateStrip } from "../components/DateStrip";
 import { PaymentSheet } from "../components/PaymentSheet";
 import { Button, Card, cx, Empty, PageLoader, Spinner, Textarea, useToast } from "../components/ui";
 
@@ -46,6 +46,19 @@ export default function Book() {
   useEffect(() => {
     if (settings) setPayNow(settings.online_payment_enabled);
   }, [settings]);
+
+  // ao chegar na etapa de horário, já seleciona o primeiro dia em que a barbearia abre
+  useEffect(() => {
+    if (step !== 3 || day || loading) return;
+    const today = startOfDay(new Date());
+    for (let i = 0; i <= (settings?.booking_window_days ?? 30); i++) {
+      const d = addDays(today, i);
+      if (hours.find((h) => h.weekday === d.getDay())?.is_open) {
+        setDay(d);
+        break;
+      }
+    }
+  }, [step, day, loading, hours, settings]);
 
   // busca horários ocupados do dia selecionado
   useEffect(() => {
@@ -202,9 +215,7 @@ export default function Book() {
             <Empty title="Nenhum profissional disponível" text="A barbearia ainda não cadastrou profissionais." />
           ) : (
             <>
-              <Card>
-                <Calendar value={day} onChange={setDay} isDisabled={dayDisabled} minMonth={new Date()} maxMonth={maxDay} />
-              </Card>
+              <DateStrip days={eachDayOfInterval({ start: startOfDay(new Date()), end: maxDay })} value={day} onChange={setDay} isDisabled={dayDisabled} />
               {day && (
                 <div>
                   <h2 className="mb-3 font-semibold capitalize">{fmt(day, "EEEE, d 'de' MMMM")}</h2>

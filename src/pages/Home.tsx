@@ -29,22 +29,17 @@ export default function Home() {
   return (
     <div>
       {/* Capa */}
-      <header className={cx("relative overflow-hidden", !settings?.cover_url && "hero-texture")}>
-        {settings?.cover_url && <img src={settings.cover_url} alt="" className="absolute inset-0 size-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-bg" />
+      <header className="relative">
+        <div className="relative aspect-[16/9] overflow-hidden">
+          <img src={settings?.cover_url || "./logo-aura.jpg"} alt="Aura Barbearia" className="size-full object-cover" />
+          <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-b from-transparent to-bg" />
+        </div>
         {isStaff && (
           <Link to="/admin" className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold backdrop-blur">
             <Settings2 className="size-3.5" /> Gestão
           </Link>
         )}
-        <div className="relative px-5 pt-14 pb-5">
-          {!settings?.cover_url && (
-            <div className="mb-6 text-center">
-              <p className="font-display text-sm tracking-[0.5em] text-ink/70">BARBEARIA</p>
-              <p className="aura-word font-display text-[88px] leading-[0.9] font-bold">AURA</p>
-            </div>
-          )}
-          {settings?.cover_url && <div className="h-36" />}
+        <div className="relative -mt-4 px-5 pb-5">
           <h1 className="text-2xl font-bold">{settings?.name ?? "Aura Barbearia"}</h1>
           {settings?.address && (
             <a href={mapsUrl ?? undefined} target="_blank" rel="noreferrer" className="mt-1 flex items-start gap-1.5 text-sm text-ink/80">

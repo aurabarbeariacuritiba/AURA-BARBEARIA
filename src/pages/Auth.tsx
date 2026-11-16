@@ -12,10 +12,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
       <Link to="/" className="mb-6 inline-flex w-fit items-center gap-1 text-sm text-muted hover:text-ink">
         <ArrowLeft className="size-4" /> Voltar
       </Link>
-      <div className="hero-texture mb-8 rounded-3xl px-6 py-8 text-center">
-        <p className="font-display text-xs tracking-[0.45em] text-ink/70">BARBEARIA</p>
-        <p className="aura-word font-display text-6xl leading-none font-bold">AURA</p>
-      </div>
+      <img src="./logo-aura.jpg" alt="Aura Barbearia" className="mb-8 aspect-[16/9] w-full rounded-3xl object-cover" />
       <h1 className="text-2xl font-bold">{title}</h1>
       {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       <div className="mt-6">{children}</div>

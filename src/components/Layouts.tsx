@@ -58,10 +58,9 @@ export function AdminLayout() {
     <div className="min-h-dvh md:flex">
       {/* lateral (desktop) */}
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface p-4 md:flex">
-        <div className="mb-6 px-2">
-          <p className="font-display text-[10px] tracking-[0.35em] text-muted">BARBEARIA</p>
-          <p className="aura-word font-display text-3xl leading-none font-bold">AURA</p>
-          <p className="mt-1 text-xs text-muted">Painel de gestão</p>
+        <div className="mb-6">
+          <img src="./logo-aura.jpg" alt="Aura Barbearia" className="aspect-[16/9] w-full rounded-xl object-cover" />
+          <p className="mt-2 px-2 text-xs text-muted">Painel de gestão</p>
         </div>
         <nav className="flex-1 space-y-1">
           {items.map(({ to, label, icon: Icon, end }) => (

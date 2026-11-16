@@ -16,18 +16,19 @@ export function RequireAuth({ staff, admin }: { staff?: boolean; admin?: boolean
 
 /* ---------- Área do cliente (barra inferior) ---------- */
 export function ClientLayout() {
-  const { session } = useAuth();
+  const { session, isStaff } = useAuth();
   const items = [
     { to: "/", label: "Início", icon: Home, end: true },
     { to: "/agendar", label: "Agendar", icon: CalendarPlus },
     { to: "/meus-agendamentos", label: "Agenda", icon: CalendarDays },
+    ...(isStaff ? [{ to: "/admin", label: "Gestão", icon: LayoutDashboard, end: false }] : []),
     { to: session ? "/perfil" : "/login", label: session ? "Perfil" : "Entrar", icon: User },
   ];
   return (
     <div className="mx-auto min-h-dvh max-w-xl pb-24">
       <Outlet />
       <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/90 backdrop-blur-lg">
-        <div className="mx-auto grid max-w-xl grid-cols-4">
+        <div className={cx("mx-auto grid max-w-xl", items.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
           {items.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={label} to={to} end={end} className={({ isActive }) => cx("flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition", isActive ? "text-gold" : "text-muted hover:text-ink")}>
               <Icon className="size-5" />

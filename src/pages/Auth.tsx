@@ -24,16 +24,15 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
 }
 
 export function Login() {
-  const { session, loading: authLoading } = useAuth();
+  const { session, profile, isStaff, loading: authLoading } = useAuth();
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const back = params.get("voltar") || "/";
 
-  if (!authLoading && session) return <Navigate to={back} replace />;
+  // equipe (admin/barbeiro) vai direto para o painel, se não veio de outra tela
+  if (!authLoading && session && profile) return <Navigate to={params.get("voltar") || (isStaff ? "/admin" : "/")} replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -41,7 +40,7 @@ export function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
     if (error) return toast.error(errMsg(error));
-    navigate(back, { replace: true });
+    // o redirecionamento acontece no render, quando sessão e perfil carregarem
   }
 
   return (

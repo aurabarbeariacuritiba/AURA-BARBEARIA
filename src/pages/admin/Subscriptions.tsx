@@ -295,6 +295,10 @@ function NewSubModal({ open, plans, onClose, onSaved }: { open: boolean; plans: 
   const [mode, setMode] = useState<"receive" | "paid_until" | "pending">("receive");
   const [method, setMethod] = useState<PayMethod>("pix");
   const [until, setUntil] = useState("");
+  const { isAdmin, profile } = useAuth();
+  const [launch, setLaunch] = useState(true);
+  const [amount, setAmount] = useState("");
+  const [paidOn, setPaidOn] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -304,6 +308,9 @@ function NewSubModal({ open, plans, onClose, onSaved }: { open: boolean; plans: 
     setPlanId(plans.find((p) => p.active)?.id ?? "");
     setMode("receive");
     setUntil(isoDay(new Date(Date.now() + 30 * 86_400_000)));
+    setLaunch(true);
+    setPaidOn(isoDay(new Date()));
+    setMethod("pix");
   }, [open, plans]);
 
   useEffect(() => {
@@ -318,10 +325,39 @@ function NewSubModal({ open, plans, onClose, onSaved }: { open: boolean; plans: 
     return () => clearTimeout(t);
   }, [q, open]);
 
+  useEffect(() => {
+    const p = plans.find((x) => x.id === planId);
+    if (p) setAmount(String(p.price).replace(".", ","));
+  }, [planId, plans]);
+
   async function save() {
     if (!clientId || !planId) return toast.error("Selecione o cliente e o plano.");
     setSaving(true);
     const { data, error } = await supabase.rpc("staff_set_subscription", { p_client_id: clientId, p_plan_id: planId, p_valid_until: mode === "paid_until" ? until : null });
+    // "Já é assinante": opcionalmente lança o valor no Financeiro (sem mexer na validade)
+    if (!error && mode === "paid_until" && isAdmin && launch) {
+      const v = parseMoney(amount);
+      if (!Number.isFinite(v) || v <= 0) {
+        setSaving(false);
+        return toast.error("Assinatura salva, mas o valor a lançar é inválido.");
+      }
+      const sub = data as Subscription;
+      const r = await supabase.from("payments").insert({
+        subscription_id: sub.id,
+        client_id: sub.client_id,
+        amount: v,
+        method,
+        status: "paid",
+        provider: "manual",
+        received_by: profile?.id,
+        paid_at: new Date(`${paidOn}T12:00:00`).toISOString(),
+        notes: "Mensalidade paga fora do app",
+      });
+      if (r.error) {
+        setSaving(false);
+        return toast.error(errMsg(r.error));
+      }
+    }
     if (!error && mode === "receive") {
       const r = await supabase.rpc("register_subscription_payment", { p_subscription_id: (data as Subscription).id, p_method: method });
       if (r.error) {
@@ -384,7 +420,31 @@ function NewSubModal({ open, plans, onClose, onSaved }: { open: boolean; plans: 
             ))}
           </div>
         )}
-        {mode === "paid_until" && <Input label="Pago até (inclusive)" type="date" value={until} onChange={(e) => setUntil(e.target.value)} />}
+        {mode === "paid_until" && (
+          <div className="space-y-3">
+            <Input label="Pago até (inclusive)" type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
+            {isAdmin && (
+              <div className="space-y-3 rounded-2xl border border-line p-3">
+                <Toggle label="Lançar este valor no Financeiro" hint="Registra a mensalidade como recebida, sem alterar a validade acima" checked={launch} onChange={setLaunch} />
+                {launch && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input label="Valor (R$)" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d,.]/g, ""))} />
+                      <Input label="Pago em" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {METHODS.map(({ k, icon: Icon }) => (
+                        <button key={k} onClick={() => setMethod(k)} className={cx("flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium", method === k ? "border-gold bg-gold/15 text-gold" : "border-line bg-surface")}>
+                          <Icon className="size-4" /> {METHOD_LABEL[k]}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

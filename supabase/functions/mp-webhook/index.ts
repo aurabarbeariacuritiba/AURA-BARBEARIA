@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-  const { data: row } = await admin.from("payments").select("id, appointment_id, amount, status").eq("id", paymentRowId).maybeSingle();
+  const { data: row } = await admin.from("payments").select("id, appointment_id, subscription_id, amount, status").eq("id", paymentRowId).maybeSingle();
   if (!row) return new Response("unknown reference", { status: 200 });
 
   let status: "pending" | "paid" | "failed" | "refunded" = "pending";
@@ -65,8 +65,8 @@ Deno.serve(async (req) => {
   else if (["rejected", "cancelled"].includes(mp.status)) status = "failed";
   else if (["refunded", "charged_back"].includes(mp.status)) status = "refunded";
 
-  // Não rebaixa um pagamento já pago para pendente/falho por notificação atrasada
-  if (row.status === "paid" && (status === "pending" || status === "failed")) {
+  // Notificação repetida (mesmo status) ou atrasada (pago -> pendente/falho): ignora
+  if (row.status === status || (row.status === "paid" && (status === "pending" || status === "failed"))) {
     return new Response("ok", { status: 200 });
   }
 
@@ -87,6 +87,12 @@ Deno.serve(async (req) => {
       await admin.from("appointments").update({ payment_status: "unpaid" })
         .eq("id", row.appointment_id).eq("payment_status", "pending");
     }
+  }
+
+  // Mensalidade de assinatura paga => ativa/renova por +1 mês
+  if (row.subscription_id && status === "paid") {
+    const { error } = await admin.rpc("apply_subscription_payment", { p_payment_id: row.id });
+    if (error) console.error("apply_subscription_payment", error);
   }
 
   return new Response("ok", { status: 200 });

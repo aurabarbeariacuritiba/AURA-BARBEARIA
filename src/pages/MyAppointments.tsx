@@ -120,8 +120,8 @@ export default function MyAppointments() {
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       <StatusBadge s={a.status} />
-                      <PayBadge s={a.payment_status} />
-                      <span className="ml-auto text-sm font-semibold text-ok">{money(a.price)}</span>
+                      <PayBadge s={a.payment_status} sub={!!a.subscription_id} />
+                      <span className="ml-auto text-sm font-semibold text-ok">{a.subscription_id ? "Assinatura" : money(a.price)}</span>
                     </div>
                   </div>
                 </div>

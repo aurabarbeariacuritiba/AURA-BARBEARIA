@@ -73,6 +73,7 @@ export interface Appointment {
   payment_status: PayStatus;
   notes: string | null;
   created_at: string;
+  subscription_id: string | null;
   client?: Pick<Profile, "full_name" | "phone" | "email"> | null;
   professional?: Pick<Professional, "name"> | null;
 }
@@ -85,6 +86,7 @@ export interface Payment {
   method: PayMethod | null;
   status: PayStatus;
   provider: "manual" | "mercadopago";
+  subscription_id: string | null;
   paid_at: string | null;
   notes: string | null;
   created_at: string;
@@ -106,4 +108,31 @@ export interface TimeOff {
   starts_at: string;
   ends_at: string;
   reason: string | null;
+}
+
+export type SubStatus = "pending" | "active" | "cancelled";
+
+export interface Plan {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  service_ids: string[];
+  allowed_weekdays: number[] | null;
+  uses_per_period: number | null;
+  active: boolean;
+  sort_order: number;
+}
+
+export interface Subscription {
+  id: string;
+  client_id: string;
+  plan_id: string;
+  status: SubStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  notes: string | null;
+  created_at: string;
+  plan?: Plan | null;
+  client?: Pick<Profile, "full_name" | "phone" | "email"> | null;
 }

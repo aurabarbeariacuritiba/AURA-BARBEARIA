@@ -17,7 +17,11 @@ const PRESETS: [Preset, string][] = [
 ];
 const CATEGORIES = ["Aluguel", "Produtos", "Comissões / Salários", "Água / Luz / Internet", "Marketing", "Manutenção", "Impostos / Taxas", "Outros"];
 
-type PaymentRow = Payment & { appointment: (Pick<Appointment, "service_name" | "starts_at"> & { professional: { name: string } | null }) | null };
+type PaymentRow = Payment & {
+  appointment: (Pick<Appointment, "service_name" | "starts_at"> & { professional: { name: string } | null }) | null;
+  subscription: { plan: { name: string } | null } | null;
+};
+const payTitle = (p: PaymentRow) => p.appointment?.service_name ?? (p.subscription ? `Mensalidade · ${p.subscription.plan?.name ?? "Assinatura"}` : "—");
 
 function range(p: Preset, custom: { from: string; to: string }) {
   const now = new Date();
@@ -52,7 +56,7 @@ export default function Finance() {
     const [p, e, r] = await Promise.all([
       supabase
         .from("payments")
-        .select("*, client:profiles!payments_client_id_fkey(full_name), appointment:appointments(service_name, starts_at, professional:professionals(name))")
+        .select("*, client:profiles!payments_client_id_fkey(full_name), appointment:appointments(service_name, starts_at, professional:professionals(name)), subscription:subscriptions(plan:plans(name))")
         .eq("status", "paid")
         .gte("paid_at", from.toISOString())
         .lte("paid_at", to.toISOString())
@@ -88,7 +92,7 @@ export default function Finance() {
     for (const p of list) {
       const m = p.method ? METHOD_LABEL[p.method as PayMethod] : "Outro";
       byMethod.set(m, (byMethod.get(m) ?? 0) + Number(p.amount));
-      const pro = p.appointment?.professional?.name ?? "Sem profissional";
+      const pro = p.appointment?.professional?.name ?? (p.subscription ? "Assinaturas (mensalidades)" : "Sem profissional");
       byPro.set(pro, (byPro.get(pro) ?? 0) + Number(p.amount));
       const d = isoDay(new Date(p.paid_at!));
       byDay.set(d, (byDay.get(d) ?? 0) + Number(p.amount));
@@ -136,7 +140,7 @@ export default function Finance() {
       ...payments!.map((p) => [
         "Entrada",
         fmt(p.paid_at!, "dd/MM/yyyy HH:mm"),
-        p.appointment?.service_name ?? "",
+        payTitle(p),
         p.client?.full_name ?? "",
         p.appointment?.professional?.name ?? "",
         p.method ? METHOD_LABEL[p.method] : "",
@@ -238,7 +242,7 @@ export default function Finance() {
               <div key={p.id} className="flex items-center gap-3 px-4 py-3 text-sm">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">
-                    {p.client?.full_name || "Cliente"} · {p.appointment?.service_name ?? "—"}
+                    {p.client?.full_name || "Cliente"} · {payTitle(p)}
                   </p>
                   <p className="text-xs text-muted">
                     {fmt(p.paid_at!, "dd/MM HH:mm")} · {p.method ? METHOD_LABEL[p.method] : "—"} · {p.provider === "manual" ? "Baixa manual" : "Online"}

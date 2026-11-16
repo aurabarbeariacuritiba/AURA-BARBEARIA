@@ -7,12 +7,25 @@ import { Button, Modal, Spinner, useToast } from "./ui";
 
 type Step = "choose" | "pix" | "paid";
 
-/** Pagamento online de um agendamento: PIX (QR Code) ou cartão (Checkout Mercado Pago). */
-export function PaymentSheet({ appt, open, onClose, onPaid }: { appt: Pick<Appointment, "id" | "price" | "service_name"> | null; open: boolean; onClose: () => void; onPaid?: () => void }) {
+/** Pagamento online (agendamento ou mensalidade de assinatura): PIX (QR Code) ou cartão (Checkout Mercado Pago). */
+export function PaymentSheet({
+  appt,
+  open,
+  onClose,
+  onPaid,
+  kind = "appointment",
+}: {
+  appt: Pick<Appointment, "id" | "price" | "service_name"> | null;
+  open: boolean;
+  onClose: () => void;
+  onPaid?: () => void;
+  kind?: "appointment" | "subscription";
+}) {
   const toast = useToast();
   const [step, setStep] = useState<Step>("choose");
   const [loading, setLoading] = useState<"pix" | "card" | null>(null);
   const [pix, setPix] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -23,22 +36,24 @@ export function PaymentSheet({ appt, open, onClose, onPaid }: { appt: Pick<Appoi
 
   // Enquanto o QR estiver na tela, verifica a cada 4s se o pagamento foi confirmado
   useEffect(() => {
-    if (step !== "pix" || !appt) return;
+    if (step !== "pix" || !paymentId) return;
     const id = setInterval(async () => {
-      const { data } = await supabase.from("appointments").select("payment_status").eq("id", appt.id).single();
-      if (data?.payment_status === "paid") {
+      const { data } = await supabase.from("payments").select("status").eq("id", paymentId).single();
+      if (data?.status === "paid") {
         setStep("paid");
         onPaid?.();
       }
     }, 4000);
     return () => clearInterval(id);
-  }, [step, appt, onPaid]);
+  }, [step, paymentId, onPaid]);
 
   async function start(method: "pix" | "card") {
     if (!appt) return;
     setLoading(method);
     try {
-      const { data, error } = await supabase.functions.invoke("create-payment", { body: { appointment_id: appt.id, method } });
+      const { data, error } = await supabase.functions.invoke("create-payment", {
+        body: kind === "subscription" ? { subscription_id: appt.id, method } : { appointment_id: appt.id, method },
+      });
       if (error) {
         const ctx = (error as { context?: Response }).context;
         const body = ctx ? await ctx.json().catch(() => null) : null;
@@ -46,6 +61,7 @@ export function PaymentSheet({ appt, open, onClose, onPaid }: { appt: Pick<Appoi
       }
       if (method === "pix") {
         setPix(data.pix);
+        setPaymentId(data.payment_id);
         setStep("pix");
       } else {
         window.location.href = data.checkout_url;
@@ -108,7 +124,7 @@ export function PaymentSheet({ appt, open, onClose, onPaid }: { appt: Pick<Appoi
         <div className="space-y-4 py-4 text-center">
           <CheckCircle2 className="mx-auto size-16 text-ok" />
           <p className="text-lg font-semibold">Pagamento recebido!</p>
-          <p className="text-sm text-muted">Seu horário está garantido. Até logo!</p>
+          <p className="text-sm text-muted">{kind === "subscription" ? "Sua assinatura está ativa. Aproveite!" : "Seu horário está garantido. Até logo!"}</p>
           <Button className="w-full" onClick={onClose}>
             Fechar
           </Button>

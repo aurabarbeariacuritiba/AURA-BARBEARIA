@@ -99,9 +99,9 @@ export default function Dashboard() {
                 </div>
                 <div className="hidden flex-col items-end gap-1 sm:flex">
                   <StatusBadge s={a.status} />
-                  <PayBadge s={a.payment_status} />
+                  <PayBadge s={a.payment_status} sub={!!a.subscription_id} />
                 </div>
-                <span className="text-sm font-semibold text-ok">{money(a.price)}</span>
+                <span className="text-sm font-semibold text-ok">{a.subscription_id ? "Assinatura" : money(a.price)}</span>
               </Card>
             ))}
           </div>

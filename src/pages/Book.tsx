@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { addDays, eachDayOfInterval, endOfDay, isBefore, startOfDay } from "date-fns";
-import { ArrowLeft, CalendarCheck2, Check, Clock, Store, Smartphone, Users } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, Check, Clock, Crown, Store, Smartphone, Users } from "lucide-react";
 import { supabase, errMsg } from "../lib/supabase";
 import { useShop } from "../lib/useShop";
+import { covers, useMySubscription } from "../lib/subscription";
 import { buildSlots } from "../lib/slots";
 import { duration, fmt, initials, money } from "../lib/format";
 import type { Appointment } from "../lib/types";
@@ -16,6 +17,7 @@ type Busy = { starts_at: string; ends_at: string };
 
 export default function Book() {
   const { settings, hours, services, professionals, loading } = useShop();
+  const { sub, uses } = useMySubscription();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -95,6 +97,7 @@ export default function Book() {
   const maxDay = addDays(new Date(), settings?.booking_window_days ?? 30);
   const dayDisabled = (d: Date) => isBefore(d, startOfDay(new Date())) || d > maxDay || !hours.find((h) => h.weekday === d.getDay())?.is_open;
 
+  const covered = !!service && !!slot && covers(sub, service.id, slot, uses);
   const chosenSlot = slots.find((s) => slot && s.at.getTime() === slot.getTime());
   const finalProId = proId === ANY ? chosenSlot?.pro : proId;
   const finalPro = professionals.find((p) => p.id === finalProId);
@@ -117,7 +120,7 @@ export default function Book() {
     }
     setBooked(data as Appointment);
     setStep(5);
-    if (payNow && settings?.online_payment_enabled) setPayOpen(true);
+    if (payNow && settings?.online_payment_enabled && (data as Appointment).payment_status !== "paid") setPayOpen(true);
   }
 
   const steps = multiPro ? ["Serviço", "Profissional", "Horário", "Confirmar"] : ["Serviço", "Horário", "Confirmar"];
@@ -164,7 +167,13 @@ export default function Book() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{s.name}</p>
                   <p className="mt-0.5 flex items-center gap-3 text-sm">
-                    <span className="font-semibold text-ok">{money(s.price)}</span>
+                    {covers(sub, s.id, null, uses) ? (
+                      <span className="flex items-center gap-1 font-semibold text-gold">
+                        <Crown className="size-3.5" /> Incluso na assinatura
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-ok">{money(s.price)}</span>
+                    )}
                     <span className="flex items-center gap-1 text-muted">
                       <Clock className="size-3.5" />
                       {duration(s.duration_min)}
@@ -258,12 +267,23 @@ export default function Book() {
             <Row label="Profissional" value={finalPro?.name ?? "—"} />
             <Row label="Data" value={fmt(slot, "EEEE, dd/MM/yyyy")} />
             <Row label="Horário" value={`${fmt(slot, "HH:mm")} (${duration(service.duration_min)})`} />
-            <div className="flex items-center justify-between border-t border-line pt-3">
-              <span className="text-muted">Total</span>
-              <span className="text-xl font-bold text-ok">{money(service.price)}</span>
-            </div>
+            {covered ? (
+              <div className="flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 p-3">
+                <Crown className="size-5 shrink-0 text-gold" />
+                <div className="text-sm">
+                  <p className="font-semibold text-gold">Incluso na sua assinatura</p>
+                  <p className="text-muted">{sub?.plan?.name} · nada a pagar</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between border-t border-line pt-3">
+                <span className="text-muted">Total</span>
+                <span className="text-xl font-bold text-ok">{money(service.price)}</span>
+              </div>
+            )}
           </Card>
 
+          {!covered && (
           <div className="space-y-2">
             <p className="text-sm font-semibold">Como prefere pagar?</p>
             {settings?.online_payment_enabled && (
@@ -273,6 +293,7 @@ export default function Book() {
               <PayOption active={!payNow} onClick={() => setPayNow(false)} icon={<Store className="size-5" />} title="Pagar na barbearia" text="Dinheiro, cartão ou PIX no atendimento" />
             )}
           </div>
+          )}
 
           <Textarea label="Observações (opcional)" placeholder="Alguma preferência para o atendimento?" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={300} />
 
@@ -292,6 +313,7 @@ export default function Book() {
               {fmt(booked.starts_at, "EEEE, d 'de' MMMM 'às' HH:mm")}
               <br />
               {booked.service_name} · {finalPro?.name}
+              {booked.subscription_id && <span className="mt-2 block font-semibold text-gold normal-case">Incluso na sua assinatura</span>}
             </p>
           </div>
           {booked.payment_status !== "paid" && settings?.online_payment_enabled && (

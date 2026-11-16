@@ -236,10 +236,10 @@ export default function Agenda() {
                   </p>
                   <div className="mt-1 flex gap-1">
                     <StatusBadge s={a.status} />
-                    <PayBadge s={a.payment_status} />
+                    <PayBadge s={a.payment_status} sub={!!a.subscription_id} />
                   </div>
                 </div>
-                <span className="text-sm font-semibold">{money(a.price)}</span>
+                <span className="text-sm font-semibold">{a.subscription_id ? "Assinatura" : money(a.price)}</span>
               </Card>
             ))}
           </div>

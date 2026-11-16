@@ -133,8 +133,8 @@ export default function Clients() {
                       <span className="w-28 text-muted">{fmt(a.starts_at, "dd/MM/yy HH:mm")}</span>
                       <span className="min-w-0 flex-1 truncate font-medium">{a.service_name}</span>
                       <StatusBadge s={a.status} />
-                      <PayBadge s={a.payment_status} />
-                      <span className="w-20 text-right">{money(a.price)}</span>
+                      <PayBadge s={a.payment_status} sub={!!a.subscription_id} />
+                      <span className="w-20 text-right">{a.subscription_id ? "Assinatura" : money(a.price)}</span>
                     </li>
                   ))}
                 </ul>

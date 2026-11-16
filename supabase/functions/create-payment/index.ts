@@ -1,6 +1,7 @@
-// Cria um pagamento no Mercado Pago para um agendamento.
+// Cria um pagamento no Mercado Pago para um AGENDAMENTO ou MENSALIDADE de assinatura.
 //  - method "pix"  -> gera QR Code PIX (copia e cola) via /v1/payments
 //  - method "card" -> gera link do Checkout Pro (cartão de crédito ou débito)
+// Body: { appointment_id, method } ou { subscription_id, method }
 // Secrets necessários: MP_ACCESS_TOKEN, SITE_URL
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -40,39 +41,61 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "Faça login novamente." }, 401);
 
-    const { appointment_id, method } = await req.json();
-    if (!appointment_id || !["pix", "card"].includes(method)) return json({ error: "Dados inválidos" }, 400);
+    const { appointment_id, subscription_id, method } = await req.json();
+    if ((!appointment_id && !subscription_id) || !["pix", "card"].includes(method)) return json({ error: "Dados inválidos" }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE);
-    const { data: appt } = await admin
-      .from("appointments")
-      .select("id, client_id, service_name, price, status, payment_status, starts_at")
-      .eq("id", appointment_id)
-      .maybeSingle();
-
-    if (!appt || appt.client_id !== user.id) return json({ error: "Agendamento não encontrado" }, 404);
-    if (appt.status === "cancelled") return json({ error: "Agendamento cancelado" }, 400);
-    if (appt.payment_status === "paid") return json({ error: "Este agendamento já está pago" }, 400);
-
     const { data: settings } = await admin.from("shop_settings").select("online_payment_enabled, name").eq("id", 1).single();
     if (!settings?.online_payment_enabled) return json({ error: "Pagamento online desativado pela barbearia" }, 400);
+
+    // ---- o que está sendo pago ----
+    let amount: number;
+    let title: string;
+    let ref: { appointment_id?: string; subscription_id?: string };
+    let backPath: string;
+
+    if (subscription_id) {
+      const { data: sub } = await admin
+        .from("subscriptions")
+        .select("id, client_id, status, plan:plans(name, price)")
+        .eq("id", subscription_id)
+        .maybeSingle();
+      if (!sub || sub.client_id !== user.id) return json({ error: "Assinatura não encontrada" }, 404);
+      if (sub.status === "cancelled") return json({ error: "Assinatura cancelada" }, 400);
+      const plan = sub.plan as unknown as { name: string; price: number };
+      amount = Number(plan.price);
+      title = `${settings.name} - ${plan.name} (mensal)`;
+      ref = { subscription_id: sub.id };
+      backPath = "/#/assinatura?pagamento=";
+    } else {
+      const { data: appt } = await admin
+        .from("appointments")
+        .select("id, client_id, service_name, price, status, payment_status")
+        .eq("id", appointment_id)
+        .maybeSingle();
+      if (!appt || appt.client_id !== user.id) return json({ error: "Agendamento não encontrado" }, 404);
+      if (appt.status === "cancelled") return json({ error: "Agendamento cancelado" }, 400);
+      if (appt.payment_status === "paid") return json({ error: "Este agendamento já está pago" }, 400);
+      amount = Number(appt.price);
+      title = `${settings.name} - ${appt.service_name}`;
+      ref = { appointment_id: appt.id };
+      backPath = "/#/meus-agendamentos?pagamento=";
+    }
 
     const { data: profile } = await admin.from("profiles").select("full_name").eq("id", user.id).single();
     const [firstName, ...rest] = (profile?.full_name ?? "Cliente").split(" ");
 
     // Reaproveita um PIX pendente ainda válido (evita gerar vários QR codes)
     if (method === "pix") {
-      const { data: existing } = await admin
+      let q = admin
         .from("payments")
-        .select("id, pix_qr_code, pix_qr_code_base64, created_at")
-        .eq("appointment_id", appt.id)
+        .select("id, pix_qr_code, pix_qr_code_base64")
         .eq("status", "pending")
         .eq("method", "pix")
         .not("pix_qr_code", "is", null)
-        .gte("created_at", new Date(Date.now() - 25 * 60 * 1000).toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .gte("created_at", new Date(Date.now() - 25 * 60 * 1000).toISOString());
+      q = ref.subscription_id ? q.eq("subscription_id", ref.subscription_id) : q.eq("appointment_id", ref.appointment_id!);
+      const { data: existing } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (existing) {
         return json({ payment_id: existing.id, pix: { qr_code: existing.pix_qr_code, qr_code_base64: existing.pix_qr_code_base64 } });
       }
@@ -81,9 +104,9 @@ Deno.serve(async (req) => {
     const { data: pay, error: payErr } = await admin
       .from("payments")
       .insert({
-        appointment_id: appt.id,
+        ...ref,
         client_id: user.id,
-        amount: appt.price,
+        amount,
         method: method === "pix" ? "pix" : null,
         status: "pending",
         provider: "mercadopago",
@@ -93,19 +116,14 @@ Deno.serve(async (req) => {
     if (payErr) throw payErr;
 
     const notification_url = `${SUPABASE_URL}/functions/v1/mp-webhook`;
-    const description = `${settings.name} - ${appt.service_name}`;
 
     if (method === "pix") {
       const res = await fetch(`${MP_API}/v1/payments`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${MP_TOKEN}`,
-          "Content-Type": "application/json",
-          "X-Idempotency-Key": pay.id,
-        },
+        headers: { Authorization: `Bearer ${MP_TOKEN}`, "Content-Type": "application/json", "X-Idempotency-Key": pay.id },
         body: JSON.stringify({
-          transaction_amount: Number(appt.price),
-          description,
+          transaction_amount: amount,
+          description: title,
           payment_method_id: "pix",
           external_reference: pay.id,
           notification_url,
@@ -125,18 +143,19 @@ Deno.serve(async (req) => {
         pix_qr_code: td.qr_code,
         pix_qr_code_base64: td.qr_code_base64,
       }).eq("id", pay.id);
-      await admin.from("appointments").update({ payment_status: "pending" }).eq("id", appt.id).eq("payment_status", "unpaid");
-
+      if (ref.appointment_id) {
+        await admin.from("appointments").update({ payment_status: "pending" }).eq("id", ref.appointment_id).eq("payment_status", "unpaid");
+      }
       return json({ payment_id: pay.id, pix: { qr_code: td.qr_code, qr_code_base64: td.qr_code_base64 } });
     }
 
     // Cartão (crédito/débito) via Checkout Pro
-    const back = `${SITE_URL}/#/meus-agendamentos?pagamento=`;
+    const back = `${SITE_URL}${backPath}`;
     const res = await fetch(`${MP_API}/checkout/preferences`, {
       method: "POST",
       headers: { Authorization: `Bearer ${MP_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        items: [{ id: appt.id, title: description, quantity: 1, unit_price: Number(appt.price), currency_id: "BRL" }],
+        items: [{ id: ref.appointment_id ?? ref.subscription_id, title, quantity: 1, unit_price: amount, currency_id: "BRL" }],
         payer: { email: user.email, name: firstName, surname: rest.join(" ") || undefined },
         external_reference: pay.id,
         notification_url,
@@ -157,10 +176,7 @@ Deno.serve(async (req) => {
       console.error("MP preference error", pref);
       return json({ error: pref.message ?? "Erro ao iniciar pagamento com cartão" }, 502);
     }
-    await admin.from("payments").update({
-      provider_preference_id: pref.id,
-      checkout_url: pref.init_point,
-    }).eq("id", pay.id);
+    await admin.from("payments").update({ provider_preference_id: pref.id, checkout_url: pref.init_point }).eq("id", pay.id);
 
     return json({ payment_id: pay.id, checkout_url: pref.init_point });
   } catch (e) {

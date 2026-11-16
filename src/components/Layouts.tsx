@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
-import { BarChart3, CalendarDays, CalendarPlus, Home, LayoutDashboard, LogOut, Scissors, Settings, User, Users, UserSquare2, Wallet, ArrowLeft } from "lucide-react";
+import { Crown, BarChart3, CalendarDays, CalendarPlus, Home, LayoutDashboard, LogOut, Scissors, Settings, User, Users, UserSquare2, Wallet, ArrowLeft } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { cx, PageLoader } from "./ui";
 
@@ -21,6 +21,7 @@ export function ClientLayout() {
     { to: "/", label: "Início", icon: Home, end: true },
     { to: "/agendar", label: "Agendar", icon: CalendarPlus },
     { to: "/meus-agendamentos", label: "Agenda", icon: CalendarDays },
+    { to: "/assinatura", label: "Assinatura", icon: Crown },
     ...(isStaff ? [{ to: "/admin", label: "Gestão", icon: LayoutDashboard, end: false }] : []),
     { to: session ? "/perfil" : "/login", label: session ? "Perfil" : "Entrar", icon: User },
   ];
@@ -28,7 +29,7 @@ export function ClientLayout() {
     <div className="mx-auto min-h-dvh max-w-xl pb-24">
       <Outlet />
       <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/90 backdrop-blur-lg">
-        <div className={cx("mx-auto grid max-w-xl", items.length === 5 ? "grid-cols-5" : "grid-cols-4")}>
+        <div className={cx("mx-auto grid max-w-xl", items.length === 6 ? "grid-cols-6" : "grid-cols-5")}>
           {items.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={label} to={to} end={end} className={({ isActive }) => cx("flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition", isActive ? "text-gold" : "text-muted hover:text-ink")}>
               <Icon className="size-5" />
@@ -49,6 +50,7 @@ export function AdminLayout() {
     { to: "/admin/agenda", label: "Agenda", icon: CalendarDays, show: true },
     { to: "/admin/financeiro", label: "Financeiro", icon: Wallet, show: isAdmin },
     { to: "/admin/clientes", label: "Clientes", icon: Users, show: true },
+    { to: "/admin/assinaturas", label: "Assinaturas", icon: Crown, show: true },
     { to: "/admin/servicos", label: "Serviços", icon: Scissors, show: isAdmin },
     { to: "/admin/equipe", label: "Equipe", icon: UserSquare2, show: isAdmin },
     { to: "/admin/ajustes", label: "Ajustes", icon: Settings, show: isAdmin },

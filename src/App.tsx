@@ -7,6 +7,8 @@ import { Login, Signup, ForgotPassword, ResetPassword } from "./pages/Auth";
 import Book from "./pages/Book";
 import MyAppointments from "./pages/MyAppointments";
 import Profile from "./pages/Profile";
+import SubscriptionPage from "./pages/Subscription";
+import Subscriptions from "./pages/admin/Subscriptions";
 import Dashboard from "./pages/admin/Dashboard";
 import Agenda from "./pages/admin/Agenda";
 import Finance from "./pages/admin/Finance";
@@ -51,6 +53,7 @@ export default function App() {
           <Route path="/agendar" element={<Book />} />
           <Route path="/meus-agendamentos" element={<MyAppointments />} />
           <Route path="/perfil" element={<Profile />} />
+          <Route path="/assinatura" element={<SubscriptionPage />} />
         </Route>
       </Route>
 
@@ -59,6 +62,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="clientes" element={<Clients />} />
+          <Route path="assinaturas" element={<Subscriptions />} />
           <Route element={<RequireAuth admin />}>
             <Route path="financeiro" element={<Finance />} />
             <Route path="servicos" element={<Services />} />

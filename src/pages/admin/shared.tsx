@@ -102,11 +102,11 @@ export function ApptModal({ appt, onClose, onChanged }: { appt: Appointment | nu
           <Line l="Serviço" v={appt.service_name} />
           <Line l="Profissional" v={appt.professional?.name ?? "—"} />
           <Line l="Quando" v={`${fmt(appt.starts_at, "EEE, dd/MM · HH:mm")}–${fmt(appt.ends_at, "HH:mm")}`} />
-          <Line l="Valor" v={money(appt.price)} />
+          <Line l="Valor" v={appt.subscription_id ? "Incluso na assinatura" : money(appt.price)} />
           {appt.notes && <Line l="Obs." v={appt.notes} />}
           <div className="flex gap-1.5 pt-1">
             <StatusBadge s={appt.status} />
-            <PayBadge s={appt.payment_status} />
+            <PayBadge s={appt.payment_status} sub={!!appt.subscription_id} />
           </div>
         </div>
 

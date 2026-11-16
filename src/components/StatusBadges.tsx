@@ -6,4 +6,4 @@ const S: Record<ApptStatus, BadgeColor> = { pending: "yellow", confirmed: "blue"
 const P: Record<PayStatus, BadgeColor> = { unpaid: "gray", pending: "yellow", paid: "green", failed: "red", refunded: "gray" };
 
 export const StatusBadge = ({ s }: { s: ApptStatus }) => <Badge color={S[s]}>{STATUS_LABEL[s]}</Badge>;
-export const PayBadge = ({ s }: { s: PayStatus }) => <Badge color={P[s]}>{PAY_STATUS_LABEL[s]}</Badge>;
+export const PayBadge = ({ s, sub }: { s: PayStatus; sub?: boolean }) => (sub ? <Badge color="gold">Assinatura</Badge> : <Badge color={P[s]}>{PAY_STATUS_LABEL[s]}</Badge>);

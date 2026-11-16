@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Accessibility, Baby, Car, ChevronRight, Camera, Clock, MapPin, MessageCircle, Search, Settings2, Wifi } from "lucide-react";
+import { Accessibility, Baby, Car, ChevronRight, Camera, Clock, Crown, MapPin, MessageCircle, Search, Settings2, Wifi } from "lucide-react";
 import { useShop } from "../lib/useShop";
 import { duration, money, WEEKDAYS, whatsappLink, initials } from "../lib/format";
 import { useAuth } from "../contexts/AuthContext";
@@ -71,6 +71,14 @@ export default function Home() {
       <div className="px-4 py-4">
         {tab === "servicos" && (
           <>
+            <Link to="/assinatura" className="mb-3 flex items-center gap-3 rounded-2xl border border-gold/40 bg-gradient-to-r from-gold/15 to-surface p-4">
+              <Crown className="size-6 shrink-0 text-gold" />
+              <span className="flex-1">
+                <span className="block font-semibold">Assinatura Aura</span>
+                <span className="block text-sm text-muted">Corte e barba o mês todo por um valor fixo</span>
+              </span>
+              <ChevronRight className="size-5 text-gold" />
+            </Link>
             <div className="relative mb-2">
               <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4.5 -translate-y-1/2 text-muted" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pesquisar serviço..." className="h-12 w-full rounded-2xl border border-line bg-surface pr-4 pl-10 text-[15px] outline-none focus:border-gold/60" />

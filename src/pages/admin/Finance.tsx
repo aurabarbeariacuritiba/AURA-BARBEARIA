@@ -170,7 +170,7 @@ export default function Finance() {
         </div>
       </div>
 
-      <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+      <div className="flex flex-wrap gap-1.5">
         {PRESETS.map(([k, l]) => (
           <button key={k} onClick={() => setPreset(k)} className={cx("shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium", preset === k ? "bg-gold text-black" : "bg-surface-2 text-muted")}>
             {l}

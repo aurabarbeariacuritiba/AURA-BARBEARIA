@@ -260,7 +260,7 @@ export default function Agenda() {
               </div>
             </div>
             {professionals.map((p) => (
-              <div key={p.id} className="w-48 shrink-0 border-r border-line last:border-r-0 sm:flex-1">
+              <div key={p.id} className="min-w-40 flex-1 border-r border-line last:border-r-0">
                 <div className="flex h-11 items-center justify-center border-b border-line px-2 text-sm font-semibold">
                   <span className="truncate">{p.name}</span>
                 </div>

@@ -94,11 +94,11 @@ export function AdminLayout() {
             <ArrowLeft className="size-3.5" /> App do cliente
           </NavLink>
         </div>
-        <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 py-2">
+        <nav className="grid grid-cols-4 gap-1 px-3 py-2">
           {items.map(({ to, label, icon: Icon, end }) => (
-            <NavLink key={to} to={to} end={end} className={({ isActive }) => cx("flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium", isActive ? "bg-gold text-black" : "bg-surface-2 text-muted")}>
+            <NavLink key={to} to={to} end={end} className={({ isActive }) => cx("flex flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium", isActive ? "bg-gold text-black" : "bg-surface-2 text-muted")}>
               <Icon className="size-4" />
-              {label}
+              <span className="w-full truncate text-center">{label}</span>
             </NavLink>
           ))}
         </nav>

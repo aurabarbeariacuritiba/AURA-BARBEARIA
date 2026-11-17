@@ -378,9 +378,9 @@ export function BlockModal({ open, onClose, onSaved, professionals, defaultDay }
 export function Kpi({ label, value, hint, tone = "ink" }: { label: string; value: string; hint?: string; tone?: "ink" | "ok" | "bad" | "gold" | "warn" }) {
   const tones = { ink: "text-ink", ok: "text-ok", bad: "text-bad", gold: "text-gold", warn: "text-warn" };
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4">
-      <p className="text-xs font-medium text-muted">{label}</p>
-      <p className={cx("mt-1 text-2xl font-bold tabular-nums", tones[tone])}>{value}</p>
+    <div className="min-w-0 rounded-2xl border border-line bg-surface p-3.5 sm:p-4">
+      <p className="truncate text-xs font-medium text-muted">{label}</p>
+      <p className={cx("mt-1 text-xl font-bold break-words tabular-nums sm:text-2xl", tones[tone])}>{value}</p>
       {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
     </div>
   );

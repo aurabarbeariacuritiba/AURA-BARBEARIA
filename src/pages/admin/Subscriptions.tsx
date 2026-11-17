@@ -125,7 +125,7 @@ function Subscribers({ plans }: { plans: Plan[] }) {
           <Plus className="size-4" /> Novo assinante
         </Button>
       </div>
-      <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+      <div className="flex flex-wrap gap-1.5">
         {(
           [
             ["open", "Todas"],
